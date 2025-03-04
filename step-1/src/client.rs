@@ -1,23 +1,23 @@
-use tokio::net::TcpStream;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::fs::File;
+use std::net::TcpStream;
 use std::error::Error;
+use std::fs::File;
+use std::io::Read;
+use std::io::Write;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
-    // Connect to the server
-    let server_port = 8000;
-    let mut stream = TcpStream::connect(format!("127.0.0.1:{server_port}")).await?;
+fn main() -> Result<(), Box<dyn Error>> {
+    // Connect to the "server"
+    let server_port = 8666; // MITM port
+    let mut stream = TcpStream::connect(format!("127.0.0.1:{server_port}"))?;
     println!("Connected to server on {server_port}");
 
     // Read the file to send
     let file_path = "src/message.txt";
-    let mut file = File::open(file_path).await?;
+    let mut file = File::open(file_path)?;
     let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).await?;
+    file.read_to_end(&mut buffer)?;
 
     // Send the file data to the server
-    stream.write_all(&buffer).await?;
+    stream.write_all(&buffer)?;
 
     println!("File sent!");
 

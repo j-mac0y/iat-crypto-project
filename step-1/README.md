@@ -1,3 +1,7 @@
-This directory contains a simple client, server and MITM. The server listens for connections on a port, and the client connects to that server. 
+# IAT Project - Step 1
 
-The MITM doesn't do very much yet. TODO Fix that.
+## Description
+This directory contains a simple client, server and MITM:
+- Server listens for connections and prints any messages it receives to the console.
+- Client binds to the "server" port (which is actually the MITM port) and sends the message it reads from the file `message.txt`.
+- MITM listens for connections and forwards any data it receives to the server, as if it is the client.
