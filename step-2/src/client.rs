@@ -3,15 +3,9 @@ use std::error::Error;
 use std::fs::File;
 use std::io::Read;
 use std::io::Write;
-use md2::{Md2, Digest};
-use hex::encode;
-use bincode::{config, Encode};
 
-#[derive(Encode)]
-struct ClientMessage {
-    data: Vec<u8>,
-    digest: String
-}
+mod client_message;
+use client_message::ClientMessage;
 
 fn main() -> Result<(), Box<dyn Error>> {
     // Connect to the "server"
@@ -25,20 +19,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer)?;
 
-    // Hash the data using MD2
-    let mut hasher = Md2::new();
-    hasher.update(&buffer);
-    let hash = hasher.finalize();
-
     // Create an object with plaintext data and digest, an encode it for transmission.
-    let client_message = ClientMessage {
-        data: buffer,
-        digest: encode(hash),
-    };
-    let encoded: Vec<u8> = bincode::encode_to_vec(&client_message, config::standard())?;
+    let client_message = ClientMessage::new(buffer);
 
     // Send the encoded data to the server
-    stream.write_all(&encoded)?;
+    stream.write_all(&client_message.encode()?)?;
 
     println!("Data sent!");
 
