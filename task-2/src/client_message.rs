@@ -10,6 +10,7 @@ pub struct ClientMessage {
 
 impl ClientMessage {
     // Constructor for a new `ClientMessage` with hashed digest.
+    #[allow(dead_code)]
     pub fn new(data: Vec<u8>) -> Self {
         let digest = Self::hash_using_md2(&data);
 
@@ -20,11 +21,13 @@ impl ClientMessage {
     }
 
     // Encodes `ClientMessage` into a `Vec<u8>` using `bincode`.
+    #[allow(dead_code)]
     pub fn encode(&self) -> Result<Vec<u8>, bincode::error::EncodeError> {
         bincode::encode_to_vec(self, config::standard())
     }
 
     // Decodes `ClientMessage` from a `Vec<u8>` using `bincode`.
+    #[allow(dead_code)]
     pub fn decode(encoded: &[u8]) -> Result<Self, bincode::error::DecodeError> {
         bincode::decode_from_slice(encoded, config::standard()).map(|(msg, _)| msg)
     }
