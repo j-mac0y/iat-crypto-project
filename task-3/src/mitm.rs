@@ -9,15 +9,8 @@ use std::fs::File;
 mod client_message;
 use client_message::ClientMessage;
 
-fn handle_client(mut stream: TcpStream) -> Result<(), Box<dyn Error>> {
-    // Buffer to store the data from the client
-    let mut buffer = Vec::new();
-    // Read the data from the client
-    stream.read_to_end(&mut buffer)?;
-    let data_from_client = String::from_utf8(buffer)?;
-    println!("Received from client: {data_from_client}");
-
-    // Forward a new message to the server, making this an active MITM.
+fn handle_client() -> Result<(), Box<dyn Error>> {
+    // Craft a new message and sign using a new keypair, making this an active MITM.
     let malicious_message = craft_malicious_message()?;
     forward_to_server(malicious_message.encode()?)?;
 
@@ -31,7 +24,9 @@ fn craft_malicious_message() -> Result<ClientMessage, Box<dyn Error>> {
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer)?;
     
-    Ok(ClientMessage::new(buffer))
+    println!("Crafted new message based on malicious_message.txt");
+
+    Ok(ClientMessage::new(buffer).unwrap())
 }
 
 fn forward_to_server(buffer: Vec<u8>) -> Result<(), Box<dyn Error>> {
@@ -54,8 +49,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Loop through incoming connection streams indefinitely
     for stream in listener.incoming() {
         match stream {
-            Ok(stream) => {
-                handle_client(stream)?;
+            Ok(_stream) => {
+                handle_client()?;
             }
             Err(e) => {
                 eprint!("Failed to accept connection: {}", e);

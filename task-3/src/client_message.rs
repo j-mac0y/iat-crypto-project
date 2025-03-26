@@ -1,23 +1,53 @@
-use bincode::{Encode, Decode, config};
-use hex::encode;
-use md2::{Md2, Digest};
+use std::error::Error;
 
-#[derive(Encode, Decode)]
+use bincode::{Encode, Decode, config};
+
+use openssl::rsa::Rsa;
+use openssl::pkey::{PKey, PKeyRef, Private};
+use openssl::sign::Signer;
+use openssl::hash::MessageDigest;
+use openssl::error::ErrorStack;
+
+#[derive(Encode, Decode, Debug)]
 pub struct ClientMessage {
     pub data: Vec<u8>,
-    pub digest: String
+    pub signature: Vec<u8>,
+    pub public_key: Vec<u8>
 }
 
 impl ClientMessage {
     // Constructor for a new `ClientMessage` with hashed digest.
     #[allow(dead_code)]
-    pub fn new(data: Vec<u8>) -> Self {
-        let digest = Self::hash_using_md2(&data);
+    pub fn new(data: Vec<u8>) -> Result<Self, Box<dyn Error>> {
+        match Self::generate_keypair() {
+            Ok(rsa_keypair) => {
+                // From the keypair, grab the public key
+                let pkey = PKey::from_rsa(rsa_keypair).unwrap();
+                let public_key: Vec<u8> = pkey.public_key_to_pem().unwrap();
 
-        Self {
-            data,
-            digest,
+                let signature = Self::generate_signature(&pkey, &data).unwrap();
+                Ok(Self {
+                    data,
+                    signature,
+                    public_key
+                })
+            },
+            Err(e) => {
+                println!("Error: {}", e);
+                Err(Box::new(e))
+            }
         }
+    }
+
+    fn generate_signature(keypair: &PKeyRef<Private>, data: &[u8]) -> Result<Vec<u8>, openssl::error::ErrorStack> {
+        let mut signer = Signer::new(MessageDigest::sha256(), &keypair)?;
+        signer.update(data)?;
+        let signature = signer.sign_to_vec()?;
+        Ok(signature)
+    }
+
+    fn generate_keypair() -> Result<Rsa<Private>, ErrorStack> {
+        Rsa::generate(2048)
     }
 
     // Encodes `ClientMessage` into a `Vec<u8>` using `bincode`.
@@ -30,12 +60,5 @@ impl ClientMessage {
     #[allow(dead_code)]
     pub fn decode(encoded: &[u8]) -> Result<Self, bincode::error::DecodeError> {
         bincode::decode_from_slice(encoded, config::standard()).map(|(msg, _)| msg)
-    }
-
-    pub fn hash_using_md2(data: &[u8]) -> String {
-        // Hash the data using MD2
-        let mut hasher = Md2::new();
-        hasher.update(&data);
-        encode(hasher.finalize())
     }
 }

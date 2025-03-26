@@ -3,6 +3,10 @@ use std::io::Read;
 use std::error::Error;
 use std::net::TcpStream;
 
+use openssl::pkey::PKey;
+use openssl::sign::Verifier;
+use openssl::hash::MessageDigest;
+
 // Declare the `client_message` module so it can be used in this file
 mod client_message;
 use client_message::ClientMessage;
@@ -19,18 +23,23 @@ fn handle_client(mut stream: TcpStream) {
 
     match ClientMessage::decode(&buffer) {
         Ok(client_message) => {
-            // Validate the data by re-hashing it and checking it against the digest
-            assert_eq!(ClientMessage::hash_using_md2(&client_message.data), client_message.digest);
-
-            match String::from_utf8(client_message.data) {
-                Ok(string) => println!("Received and validated data from client: {}", string),
-                Err(e) => println!("Error: {}", e),
+            if is_signature_valid(&client_message.signature, &client_message.public_key, &client_message.data) {
+                println!("Received and validated data from client: {:#?}", String::from_utf8(client_message.data).unwrap());
+                return
             }
         }
         Err(e) => {
             eprintln!("Failed to decode the message from client: {}", e);
         }
     }
+}
+
+fn is_signature_valid(signature: &Vec<u8>, public_key: &Vec<u8>, data: &Vec<u8>) -> bool {
+    // Verify the data using the client's public key
+    let pkey = &PKey::public_key_from_pem(public_key).unwrap();
+    let mut verifier = Verifier::new(MessageDigest::sha256(), &pkey).unwrap();
+    verifier.update(&data).unwrap();
+    return verifier.verify(&signature).unwrap()
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
