@@ -6,7 +6,7 @@ use openssl::pkey::{PKey, Private};
 use openssl::rsa::Rsa;
 use openssl::error::ErrorStack;
 
-// Declare the `client_message` module so it can be used in this file
+// Declare the `encrypted_message` module so it can be used in this file
 mod encrypted_message;
 use encrypted_message::EncryptedMessage;
 
@@ -14,7 +14,6 @@ use encrypted_message::EncryptedMessage;
 fn generate_keypair() -> Result<Rsa<Private>, ErrorStack> {
     Rsa::generate(2048)
 }
-
 
 fn send_message(stream: &mut impl Write, message: &[u8]) -> std::io::Result<()> {
     let len = message.len() as u32;

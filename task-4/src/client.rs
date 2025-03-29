@@ -4,7 +4,7 @@ use std::fs::File;
 use std::io::{Read, Write};
 
 
-// Declare the `client_message` module so it can be used in this file
+// Declare the `encrypted_message` module so it can be used in this file
 mod encrypted_message;
 use encrypted_message::EncryptedMessage;
 
