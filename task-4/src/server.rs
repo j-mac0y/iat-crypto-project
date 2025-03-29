@@ -1,10 +1,8 @@
 use std::net::TcpListener;
-use std::io::Read;
-use std::io::Write;
+use std::io::{Read, Write};
 use std::error::Error;
-use std::net::TcpStream;
 
-use openssl::pkey::{PKey, PKeyRef, Private};
+use openssl::pkey::{PKey, Private};
 use openssl::rsa::Rsa;
 use openssl::error::ErrorStack;
 
@@ -12,29 +10,28 @@ use openssl::error::ErrorStack;
 mod encrypted_message;
 use encrypted_message::EncryptedMessage;
 
-// fn handle_client_message(mut stream: TcpStream, private_key: &PKeyRef<Private>) {
-//     match EncryptedMessage::decode(&buffer) {
-//         Ok(client_message) => {
-//             let decrypted_message = EncryptedMessage::decrypt(&client_message.encrypted_data, private_key);
-//             println!("Message decrypted from client reads: {:#?}", decrypted_message);
-//         }
-//         Err(e) => {
-//             eprintln!("Failed to decode the message from client: {}", e);
-//         }
-//     }
-// }
-
-// fn is_signature_valid(signature: &Vec<u8>, public_key: &Vec<u8>, data: &Vec<u8>) -> bool {
-//     // Verify the data using the client's public key
-//     let pkey = &PKey::public_key_from_pem(public_key).unwrap();
-//     let mut verifier = Verifier::new(MessageDigest::sha256(), &pkey).unwrap();
-//     verifier.update(&data).unwrap();
-//     return verifier.verify(&signature).unwrap()
-// }
-
 // Generate an RSA keypair. This needs to happen at the server so the private key remains in the server state.
 fn generate_keypair() -> Result<Rsa<Private>, ErrorStack> {
     Rsa::generate(2048)
+}
+
+
+fn send_message(stream: &mut impl Write, message: &[u8]) -> std::io::Result<()> {
+    let len = message.len() as u32;
+    let len_bytes = len.to_be_bytes();
+    stream.write_all(&len_bytes)?; // Include the message length as the first 4 bytes
+    stream.write_all(message)?;
+    stream.flush()?;
+    Ok(())
+}
+
+fn receive_message(stream: &mut impl Read) -> std::io::Result<Vec<u8>> {
+    let mut len_bytes = [0u8; 4];
+    stream.read_exact(&mut len_bytes)?;  // Read the message exactly, using the message length
+    let len = u32::from_be_bytes(len_bytes);
+    let mut buffer = vec![0; len as usize];
+    stream.read_exact(&mut buffer)?;
+    Ok(buffer)
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -44,7 +41,6 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Generate the server's keypair
     let keypair: Rsa<Private> = generate_keypair()?;
-
     // From the keypair, grab the public key
     let pkey = PKey::from_rsa(keypair)?;
     let pem: Vec<u8> = pkey.public_key_to_pem()?;
@@ -53,31 +49,25 @@ fn main() -> Result<(), Box<dyn Error>> {
      // Accept incoming connections
      for stream in listener.incoming() {
         let mut stream = stream?;
-        println!("Request received from client");
+        println!("Connection received from client");
 
-        // Read connections using a fixed size buffer to avoid blocked state
-        let mut buffer = [0; 1024]; // Fixed-size buffer
-        let n = match stream.read(&mut buffer) {
-            Ok(n) if n > 0 => n,
-            Ok(_) => {
-                println!("Client closed connection.");
-                continue;
-            }
-            Err(e) => {
-                eprintln!("Failed to read from client: {}", e);
-                continue;
-            }
-        };
+        let received_data: Vec<u8> = receive_message(&mut stream)?;
+        println!("Received from client: {:?}", received_data);
 
-        let received_data = &buffer[..n];
         if received_data == b"give_public_key" {
+            // Respond with an empty EncryptedMessage so that the client gets the public key
             println!("Handling public key request");
             let empty_message = EncryptedMessage::new(Vec::new(), &public_key)?.encode()?;
-            stream.write_all(&empty_message)?;
-            stream.flush()?; // Ensure data is sent immediately
+            send_message(&mut stream, &empty_message)?;
+
+            // Now wait for the client’s subsequent message (e.g., encrypted message)
+            let client_message: EncryptedMessage = EncryptedMessage::decode(&receive_message(&mut stream)?)?;
+            // Decrypt the client's message using the server's private key.
+            println!("Received client message: {:?}", String::from_utf8(EncryptedMessage::decrypt(&client_message.encrypted_data, &pkey)?)?);
         } else {
-            println!("Handling other request");
+            println!("Error: invalid request received");
         }
+        println!("Finished handling stream");
     }
 
     Ok(())

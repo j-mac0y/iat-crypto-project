@@ -54,6 +54,7 @@ impl EncryptedMessage {
 
     // Decrypt the message using the private key of the intended recipient
     // Ref: https://docs.rs/openssl/latest/openssl/encrypt/index.html
+    #[allow(dead_code)]
     pub fn decrypt(encrypted: &[u8], private_key: &PKeyRef<Private>) -> Result<Vec<u8>,  Box<dyn Error>> {
         // Decrypt the data
         let mut decrypter = Decrypter::new(&private_key).unwrap();
@@ -67,6 +68,8 @@ impl EncryptedMessage {
         Ok(decrypted)
     }
 
+    // Add new data to the message and encrypt it with the public key. Useful for a MITM!
+    #[allow(dead_code)]
     pub fn update_encrypted_data(mut self, new_data: Vec<u8>) -> Result<Self, Box<dyn Error>> {
         let public_key_of_recipient = PKey::public_key_from_pem(&self.public_key)?;
         self.encrypted_data = Self::encrypt(new_data, &public_key_of_recipient)?;
