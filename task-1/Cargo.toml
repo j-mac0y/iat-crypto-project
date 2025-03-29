@@ -17,4 +17,3 @@ name = "mitm"
 path = "src/mitm.rs"
 
 [dependencies]
-tokio = { version = "1.43.0", features = ["full"] }
