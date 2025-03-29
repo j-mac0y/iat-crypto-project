@@ -1,0 +1,49 @@
+use bincode::{Encode, Decode, config};
+use openssl::pkey::{PKey, PKeyRef, Private};
+use openssl::sign::Signer;
+use openssl::hash::MessageDigest;
+use openssl::error::ErrorStack;
+use std::error::Error;
+
+#[derive(Encode, Decode)]
+pub struct Certificate {
+    pub server_name: Vec<u8>,
+    pub public_key: Vec<u8>,
+    pub ca_signature: Vec<u8>
+}
+
+impl Certificate {
+    pub fn new(server_name: Vec<u8>, server_public_key: Vec<u8>, ca_private_key: &PKeyRef<Private>) -> Result<Self, Box<dyn Error>> {        
+        let mut data_to_sign = Vec::new();
+        data_to_sign.extend(server_name.clone());
+        data_to_sign.extend(server_public_key.clone());
+        
+        Ok(Self {
+            server_name,
+            public_key: server_public_key,
+            ca_signature: Self::generate_signature(ca_private_key, &data_to_sign)?
+        })
+    }
+
+    // Ref: Task 3
+    fn generate_signature(private_key: &PKeyRef<Private>, data: &[u8]) -> Result<Vec<u8>, openssl::error::ErrorStack> {
+        let mut signer = Signer::new(MessageDigest::sha256(), &private_key)?;
+        signer.update(data)?;
+        let signature = signer.sign_to_vec()?;
+        Ok(signature)
+    }
+
+    // Encodes `Certificate` into a `Vec<u8>` using `bincode`.
+    #[allow(dead_code)]
+    pub fn encode(&self) -> Result<Vec<u8>, bincode::error::EncodeError> {
+        bincode::encode_to_vec(self, config::standard())
+    }
+
+    // Decodes `Certificate` from a `Vec<u8>` using `bincode`.
+    #[allow(dead_code)]
+    pub fn decode(encoded: &[u8]) -> Result<Self, bincode::error::DecodeError> {
+        bincode::decode_from_slice(encoded, config::standard()).map(|(msg, _)| msg)
+    }
+}
+
+   
