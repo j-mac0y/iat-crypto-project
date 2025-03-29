@@ -50,7 +50,7 @@ fn handle_client(mut client: &TcpStream) -> Result<(), Box<dyn Error>> {
 
 fn read_message_from_file() -> Result<Vec<u8>, std::io::Error> {
     // Read the file to send
-    let file_path = "src/malicious_message.txt";
+    let file_path = "./malicious_message.txt";
     let mut file = File::open(file_path)?;
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer)?;

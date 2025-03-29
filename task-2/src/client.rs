@@ -14,7 +14,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("Connected to server on {server_port}");
 
     // Read the file to send
-    let file_path = "src/message.txt";
+    let file_path = "./message.txt";
     let mut file = File::open(file_path)?;
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer)?;

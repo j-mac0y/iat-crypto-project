@@ -10,7 +10,7 @@ use encrypted_message::EncryptedMessage;
 
 fn read_message_from_file() -> Result<Vec<u8>, std::io::Error> {
     // Read the file to send
-    let file_path = "src/message.txt";
+    let file_path = "./message.txt";
     let mut file = File::open(file_path)?;
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer)?;

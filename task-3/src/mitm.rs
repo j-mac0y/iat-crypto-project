@@ -19,7 +19,7 @@ fn handle_client() -> Result<(), Box<dyn Error>> {
 
 fn craft_malicious_message() -> Result<ClientMessage, Box<dyn Error>> {
     // Create malicious data to forward to the server
-    let file_path = "src/malicious_message.txt";
+    let file_path = "./malicious_message.txt";
     let mut file = File::open(file_path)?;
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer)?;
