@@ -1,6 +1,4 @@
 # IAT Project - Task 4
-## Pre-requisites: *Rust*
-
 ## Description
 This directory contains a client, server and MITM.
 

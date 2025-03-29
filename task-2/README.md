@@ -1,6 +1,4 @@
 # IAT Project - Task 2
-## Pre-requisites: *Rust*
-
 ## Description
 This directory contains a client, server and MITM.
 
@@ -11,8 +9,18 @@ Client uses `ClientMessage` to hash the message data before sending it, MITM the
 The server validates that the plaintext data has not been altered by using the hash, but does not know the active MITM is the one who created the data. 
 
 ## Instructions
-To run the scenario, first run `cargo build`, then open three terminals:
-1. Run `cargo run --bin server` in the first terminal.
-2. Run `cargo run --bin mitm` in the second terminal.
-3. Run `cargo run --bin client` in the third terminal.
-4. Repeat step 3 if you want to see the result again.
+I have placed executables built for an x86 Windows machine in the `executables` folder for each task.
+
+Execute the programs in the following order (in separate terminals):
+1. Run `./server` in the first terminal.
+2. Run `./mitm` in the second terminal.
+3. Run `./client` in the third terminal.
+
+If you want to see it again, restart the process from step 1.
+
+### Compiling from source code
+Pre-requisites:
+1. Rust
+2. [Rust OpenSSL crate setup commands](https://docs.rs/openssl/latest/openssl/#automatic)
+
+If the executable doesn't work for some reason, you can run `cargo build` and then run each program with `cargo run --bin programName`, using the same order as for the executables.
