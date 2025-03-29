@@ -1,4 +1,5 @@
-# IAT Project - Step 1
+# IAT Project - Task 1
+## Pre-requisites: *Rust*
 
 ## Description
 This directory contains a simple client, server and MITM:
@@ -7,7 +8,7 @@ This directory contains a simple client, server and MITM:
 - MITM listens for connections and forwards any data it receives to the server, as if it is the client.
 
 ## Instructions
-To run the scenario, open three terminals:
+To run the scenario, first run `cargo build`, then open three terminals:
 1. Run `cargo run --bin server` in the first terminal.
 2. Run `cargo run --bin mitm` in the second terminal.
 3. Run `cargo run --bin client` in the third terminal.

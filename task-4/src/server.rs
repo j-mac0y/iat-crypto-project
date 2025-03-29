@@ -45,13 +45,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     let pem: Vec<u8> = pkey.public_key_to_pem()?;
     let public_key= PKey::public_key_from_pem(&pem)?;
 
-     // Accept incoming connections
-     for stream in listener.incoming() {
+    // Accept incoming connections
+    for stream in listener.incoming() {
         let mut stream = stream?;
         println!("Connection received from client");
 
         let received_data: Vec<u8> = receive_message(&mut stream)?;
-        println!("Received from client: {:?}", received_data);
+        println!("Received from client: {:?}", String::from_utf8(received_data.clone()));
 
         if received_data == b"give_public_key" {
             // Respond with an empty EncryptedMessage so that the client gets the public key
@@ -66,6 +66,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         } else {
             println!("Error: invalid request received");
         }
+
         println!("Finished handling stream");
     }
 

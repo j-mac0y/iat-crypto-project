@@ -41,7 +41,7 @@ fn forward_to_server(buffer: Vec<u8>) -> Result<(), Box<dyn Error>> {
     println!("Connected to server on {server_port}");
 
     stream.write_all(&buffer)?;
-    println!("Data forwarded to server!");
+    println!("Sent new message to server based on malicious_message.txt");
 
     Ok(())
 }

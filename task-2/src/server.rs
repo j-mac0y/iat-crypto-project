@@ -23,7 +23,7 @@ fn handle_client(mut stream: TcpStream) {
             assert_eq!(ClientMessage::hash_using_md2(&client_message.data), client_message.digest);
 
             match String::from_utf8(client_message.data) {
-                Ok(string) => println!("Received and validated data from client: {}", string),
+                Ok(string) => println!("Received and validated data (against hash) from client: {}", string),
                 Err(e) => println!("Error: {}", e),
             }
         }

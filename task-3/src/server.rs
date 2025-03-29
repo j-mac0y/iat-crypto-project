@@ -24,7 +24,7 @@ fn handle_client(mut stream: TcpStream) {
     match ClientMessage::decode(&buffer) {
         Ok(client_message) => {
             if is_signature_valid(&client_message.signature, &client_message.public_key, &client_message.data) {
-                println!("Received and validated data from client: {:#?}", String::from_utf8(client_message.data).unwrap());
+                println!("Received and validated data from client (using signature): {:#?}", String::from_utf8(client_message.data).unwrap());
                 return
             }
         }
