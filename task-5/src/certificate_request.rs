@@ -8,6 +8,7 @@ pub struct CertificateRequest {
 }
 
 impl CertificateRequest {
+    #[allow(dead_code)]
     pub fn new(server_name: Vec<u8>, public_key: Vec<u8>) -> Result<Self, Box<dyn Error>> {
         Ok(Self {
             server_name,

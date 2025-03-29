@@ -1,5 +1,9 @@
 use std::io::{Read, Write};
 use std::error::Error;
+use std::net::TcpStream;
+
+mod certificate;
+use certificate::Certificate;
 
 fn send_message(stream: &mut impl Write, identifier: &str, message: &[u8]) -> Result<(), Box<dyn Error>> {
     let identifier_bytes = identifier.as_bytes();
@@ -41,14 +45,32 @@ fn receive_message(stream: &mut impl Read) -> Result<(String, Vec<u8>), Box<dyn 
 fn main() -> Result<(), Box<dyn Error>> {
     // Step 1: Get the Certificate from the server
     // Connect to server
+    let server_port = 8000;
+    let mut server = TcpStream::connect(format!("127.0.0.1:{server_port}"))?;
+    // Send "GetServerCertificate" request
+    send_message(&mut server, "GetServerCertificate", b"")?;
+    // Receive certificate back from server
+    let cert: Certificate = Certificate::decode(&receive_message(&mut server)?.1)?;
+    println!("Received certificate from server with name: {}", String::from_utf8(cert.server_name.clone())?);
 
-    
     // Step 2: Verify the Certificate using the public key of the certificate authority
     // Connect to CA
-
+    let ca_port = 8111; // MITM port
+    let mut certificate_authority = TcpStream::connect(format!("127.0.0.1:{ca_port}"))?;
     // Send "GetPubKey" request to CA
+    send_message(&mut certificate_authority, "GetPubKey", b"")?;
+    println!("Got public key of certificate authority.");
 
-    // Validate the server's Certificate
+    // Step 3: Validate the server's certificate using the CA's public key
+    let ca_public_key = receive_message(&mut certificate_authority)?.1;
+    let mut cert_data = Vec::new();
+    cert_data.extend(&cert.server_name.clone());
+    cert_data.extend(&cert.public_key.clone());
+    if Certificate::is_signature_valid(&cert.ca_signature, &ca_public_key, &cert_data) {
+        println!("Validated certificate from server against public key provided by CA.");
+    } else {
+        eprintln!("Error: certificate could not be validated.");
+    }
 
     Ok(())
 }

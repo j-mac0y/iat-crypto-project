@@ -3,19 +3,24 @@ use openssl::rsa::Rsa;
 use openssl::error::ErrorStack;
 use std::io::{Read, Write};
 use std::error::Error;
+use std::net::{TcpStream, TcpListener};
 
 mod certificate;
 use certificate::Certificate;
+
+mod certificate_request;
+use certificate_request::CertificateRequest;
 
 // Generate an RSA keypair. This needs to happen at the server so the private key remains in the server state.
 fn generate_keypair() -> Result<Rsa<Private>, ErrorStack> {
     Rsa::generate(2048)
 }
 
-// fn request_certificate(public_key: PKey<Public>, server_name: String) -> Result<Certificate, Box<dyn Error>> {
-
-//     Ok()
-// }
+fn request_certificate(public_key: PKey<Public>, server_name: &[u8], certificate_authority: &mut TcpStream) -> Result<Certificate, Box<dyn Error>> {
+    send_message(certificate_authority, "CSR", 
+    &CertificateRequest::new(server_name.to_vec(), public_key.public_key_to_pem()?)?.encode()?)?;
+    Ok(Certificate::decode(&receive_message(certificate_authority)?.1)?)
+}
 
 fn send_message(stream: &mut impl Write, identifier: &str, message: &[u8]) -> Result<(), Box<dyn Error>> {
     let identifier_bytes = identifier.as_bytes();
@@ -55,18 +60,40 @@ fn receive_message(stream: &mut impl Read) -> Result<(String, Vec<u8>), Box<dyn 
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
+    // Generate the server's keypair and store in memory
+    let keypair: Rsa<Private> = generate_keypair()?;
+    // From the keypair, grab the public key
+    let pkey = PKey::from_rsa(keypair)?;
+    let pem: Vec<u8> = pkey.public_key_to_pem()?;
+    let public_key= PKey::public_key_from_pem(&pem)?;
+    
     // Step 1: Get Certificate from CA and store in memory 
     // Connect to CA
-
+    let ca_port = 8111; // MITM port
+    let mut certificate_authority = TcpStream::connect(format!("127.0.0.1:{ca_port}"))?;
     // Send "CSR" request to CA
-
-    // Receive response from CA (signed certificate)
-
-
+    let signed_cert: Certificate = request_certificate(public_key, b"James_Server_Inc", &mut certificate_authority)?;
+    println!("Received signed certificate from CA for: {}", String::from_utf8(signed_cert.server_name.clone())?);
+    
     // Step 2: Listen for client requests and respond with the Certificate
     // Listen for requests on 8000
+    let port = 8000;
+    let listener = TcpListener::bind(format!("127.0.0.1:{port}"))?;
+    println!("Server listening on port {port}...");
+    for stream in listener.incoming() {
+        let mut stream = stream?;
+        let (request_type, _received_data) = receive_message(&mut stream)?;
+        println!("Received request: {:?}", request_type);
 
-    // Handle request type "GetServerCertificate" by signing the certificate request
+        // Handle request type "GetServerCertificate" by returning the certificate to the client
+        match request_type.as_str() {
+            "GetServerCertificate" => {
+                send_message(&mut stream, "GetCertificate_Response", &signed_cert.encode()?)?;
+                println!("Responded with certificate");
+            },
+            _ => eprintln!("Error: invalid request type.")
+        }
+    }
 
     Ok(())
 }

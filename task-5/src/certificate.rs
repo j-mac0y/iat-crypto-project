@@ -1,8 +1,8 @@
 use bincode::{Encode, Decode, config};
 use openssl::pkey::{PKey, PKeyRef, Private};
 use openssl::sign::Signer;
+use openssl::sign::Verifier;
 use openssl::hash::MessageDigest;
-use openssl::error::ErrorStack;
 use std::error::Error;
 
 #[derive(Encode, Decode)]
@@ -13,6 +13,7 @@ pub struct Certificate {
 }
 
 impl Certificate {
+    #[allow(dead_code)]
     pub fn new(server_name: Vec<u8>, server_public_key: Vec<u8>, ca_private_key: &PKeyRef<Private>) -> Result<Self, Box<dyn Error>> {        
         let mut data_to_sign = Vec::new();
         data_to_sign.extend(server_name.clone());
@@ -26,6 +27,7 @@ impl Certificate {
     }
 
     // Ref: Task 3
+    #[allow(dead_code)]
     fn generate_signature(private_key: &PKeyRef<Private>, data: &[u8]) -> Result<Vec<u8>, openssl::error::ErrorStack> {
         let mut signer = Signer::new(MessageDigest::sha256(), &private_key)?;
         signer.update(data)?;
@@ -43,6 +45,16 @@ impl Certificate {
     #[allow(dead_code)]
     pub fn decode(encoded: &[u8]) -> Result<Self, bincode::error::DecodeError> {
         bincode::decode_from_slice(encoded, config::standard()).map(|(msg, _)| msg)
+    }
+
+    // Src: Task 3
+    #[allow(dead_code)]
+    pub fn is_signature_valid(signature: &Vec<u8>, signer_public_key: &Vec<u8>, data: &Vec<u8>) -> bool {
+        // Verify the data using the public key of the signer
+        let pkey = &PKey::public_key_from_pem(signer_public_key).unwrap();
+        let mut verifier = Verifier::new(MessageDigest::sha256(), &pkey).unwrap();
+        verifier.update(&data).unwrap();
+        return verifier.verify(&signature).unwrap()
     }
 }
 

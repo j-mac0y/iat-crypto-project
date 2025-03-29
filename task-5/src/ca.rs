@@ -1,10 +1,9 @@
 use std::io::{Read, Write};
 use std::error::Error;
+use std::net::TcpListener;
 
 use openssl::rsa::Rsa;
 use openssl::pkey::{PKey, PKeyRef, Private};
-use openssl::sign::Signer;
-use openssl::hash::MessageDigest;
 use openssl::error::ErrorStack;
 
 mod certificate_request;
@@ -18,7 +17,7 @@ fn generate_keypair() -> Result<Rsa<Private>, ErrorStack> {
     Rsa::generate(2048)
 }
 
-fn handle_certificate_request(request: CertificateRequest, private_key: &PKeyRef<Private>) -> Result<Certificate, Box<dyn Error>> {
+fn issue_cert(request: CertificateRequest, private_key: &PKeyRef<Private>) -> Result<Certificate, Box<dyn Error>> {
     Ok(Certificate::new(request.server_name, request.public_key, private_key)?)
 }
 
@@ -61,18 +60,39 @@ fn receive_message(stream: &mut impl Read) -> Result<(String, Vec<u8>), Box<dyn 
 
 
 fn main() -> Result<(), Box<dyn Error>> {
-    // Generate CA keypair and store
+    // Generate CA keypair and store in memory
     let keypair: Rsa<Private> = generate_keypair()?;
     // From the keypair, grab the public key
     let pkey = PKey::from_rsa(keypair)?;
     let pem: Vec<u8> = pkey.public_key_to_pem()?;
     let public_key= PKey::public_key_from_pem(&pem)?;
 
-    // Listen for connections on 8111
+    // Listen for connections
+    let port = 8111;
+    let listener = TcpListener::bind(format!("127.0.0.1:{port}"))?;
+    println!("CA listening on port {port}...");
 
-    // Handle request type "CSR" by signing the certificate request
+    // Accept incoming connections
+    for stream in listener.incoming() {
+        let mut stream = stream?;
+        let (request_type, received_data) = receive_message(&mut stream)?;
+        println!("Received request: {:?}", request_type);
 
-    // Handle request type "GetPubKey" by sending back the CA's public key
+        match request_type.as_str() {
+            // Handle request type "CSR" by signing the certificate request
+            "CSR" => {
+                let cert = issue_cert(CertificateRequest::decode(&received_data)?, &pkey)?;
+                send_message(&mut stream, "CSR_Response", &cert.encode()?)?;
+                println!("Issued certificate for: {}", String::from_utf8(cert.server_name)?);
+            },
+            // Handle request type "GetPubKey" by sending back the CA's public key
+            "GetPubKey" => {
+                send_message(&mut stream, "GetPubKey_Response", &public_key.public_key_to_pem()?)?;
+                println!("Responded with public key");
+            },
+            _ => eprintln!("Error: invalid request type.")
+        }
+    }
 
     Ok(())
 }
